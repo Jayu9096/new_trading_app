@@ -1,0 +1,49 @@
+services:
+  - type: worker
+    name: option-collector
+    env: python
+    rootDir: collector
+    buildCommand: pip install -r requirements.txt
+    startCommand: python collector_service.py
+    plan: starter
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: option-kv
+          property: connectionString
+      - key: UPSTOX_ACCESS_TOKEN
+        sync: false
+      - key: NIFTY_EXPIRY
+        value: 2026-04-21
+      - key: SENSEX_EXPIRY
+        value: 2026-04-24
+
+  - type: web
+    name: option-api
+    env: python
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api_server:app --host 0.0.0.0 --port $PORT
+    plan: starter
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: option-kv
+          property: connectionString
+
+  - type: web
+    name: option-viewer
+    env: python
+    rootDir: viewer
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
+    plan: starter
+    envVars:
+      - key: API_BASE_URL
+        value: https://option-api.onrender.com
+
+keyvalue:
+  - name: option-kv
+    plan: starter
